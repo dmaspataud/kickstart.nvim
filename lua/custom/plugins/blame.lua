@@ -5,6 +5,6 @@ return {
   opts = {},
   config = function()
     require('blame').setup {}
-    vim.api.nvim_set_keymap('n', '<leader>gb', ':ToggleBlame<CR>', { noremap = true, silent = true })
+    vim.api.nvim_set_keymap('n', '<leader>gb', ':ToggleBlame virtual<CR>', { noremap = true, silent = true })
   end,
 }
