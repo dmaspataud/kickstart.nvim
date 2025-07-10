@@ -36,7 +36,7 @@ return {
     {
       claude = {
         endpoint = 'https://api.anthropic.com',
-        model = 'claude-sonnet-4-20250514',
+        model = 'claude-sonnet-3-7-sonnet-20250219',
         timeout = 30000, -- Timeout in milliseconds
         temperature = 0,
         max_tokens = 4096,
