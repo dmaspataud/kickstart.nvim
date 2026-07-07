@@ -842,40 +842,77 @@ require('lazy').setup({
   },
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
+    -- The `main` branch is the rewrite required by Neovim 0.12+; the old
+    -- `master` branch is frozen and unsupported on 0.12. See `:help nvim-treesitter`.
+    branch = 'main',
+    -- main does not support lazy-loading; load at startup and update parsers on build.
+    lazy = false,
     build = ':TSUpdate',
-    opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'vim', 'vimdoc' },
-      -- Autoinstall languages that are not installed
-      auto_install = true,
-      highlight = {
-        enable = true,
-        -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
-        --  If you are experiencing weird indenting issues, add the language to
-        --  the list of additional_vim_regex_highlighting and disabled languages for indent.
-        additional_vim_regex_highlighting = { 'ruby' },
-      },
-      indent = { enable = true, disable = { 'ruby' } },
-    },
-    config = function(_, opts)
-      -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
+    config = function()
+      -- [[ Configure Treesitter ]] See the main-branch README for the new API.
+      require('nvim-treesitter').setup()
 
-      -- Prefer git instead of curl in order to improve connectivity in some environments
-      require('nvim-treesitter.install').prefer_git = true
-      ---@diagnostic disable-next-line: missing-fields
-      require('nvim-treesitter.configs').setup {
-        ensure_installed = { 'bash', 'c', 'html', 'lua', 'markdown', 'vim', 'vimdoc', 'helm', 'go', 'terraform' },
-        -- Autoinstall languages that are not installed
-        auto_install = true,
-        highlight = { enable = true },
-        indent = { enable = true },
+      -- Parsers to install ahead of time. `markdown_inline` is required for
+      -- markdown language injections (fenced code blocks, inline content) to render.
+      local ensure_installed = {
+        'bash',
+        'c',
+        'diff',
+        'html',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'vim',
+        'vimdoc',
+        'query',
+        'helm',
+        'go',
+        'terraform',
       }
+      require('nvim-treesitter').install(ensure_installed)
 
-      -- There are additional nvim-treesitter modules that you can use to interact
-      -- with nvim-treesitter. You should go explore a few and see what interests you:
-      --
-      --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
-      --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
-      --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+      -- On main, features are not enabled automatically. For each opened buffer,
+      -- start highlighting + indentation once a parser is available. Parsers that
+      -- aren't installed yet are auto-installed on demand (replacing the old
+      -- `auto_install = true`). Treesitter indentation is experimental; it is
+      -- disabled for ruby, which relies on vim's regex indent.
+      local indent_disable = { ruby = true }
+
+      local function ts_start(buf, lang)
+        if not vim.api.nvim_buf_is_valid(buf) then
+          return
+        end
+        vim.treesitter.start(buf, lang)
+        if not indent_disable[lang] then
+          vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+        end
+      end
+
+      vim.api.nvim_create_autocmd('FileType', {
+        group = vim.api.nvim_create_augroup('treesitter-start', { clear = true }),
+        callback = function(args)
+          local buf = args.buf
+          local lang = vim.treesitter.language.get_lang(vim.bo[buf].filetype)
+          if not lang then
+            return
+          end
+          -- `language.add` returns true only when a parser is actually available
+          -- (it returns false/nil rather than erroring when one is missing, so we
+          -- must check the value, not just that the pcall succeeded).
+          local ok, added = pcall(vim.treesitter.language.add, lang)
+          if ok and added then
+            ts_start(buf, lang)
+          elseif vim.tbl_contains(require('nvim-treesitter.config').get_available(), lang) then
+            -- Not installed yet but installable: fetch it, then start.
+            require('nvim-treesitter')
+              .install(lang)
+              :await(vim.schedule_wrap(function()
+                ts_start(buf, lang)
+              end))
+          end
+        end,
+      })
     end,
   },
 
