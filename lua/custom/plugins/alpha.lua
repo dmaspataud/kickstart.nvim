@@ -142,7 +142,7 @@ return {
         ⠀⠀⠈⠉⠛⠛⠫⢽⢿⣞⣔⣿⡿⠋⠃⠁⠈⠐⠙⠩⠻⠓⠏⠛⠱⠉⠍⠍⠁⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
                                                                           ]]
 
-    local logo = numeral_logo
+    local logo = nous_logo
     local userName = 'Lazy'
     local greeting = getGreeting(userName)
     local marginBottom = 0
